@@ -135,4 +135,24 @@ go run ./cmd/server
 ```
 
 ### Step 6: Verify
-Execute the curl commands listed in the "Test Output" section above.
+Post the device with the new API:
+```bash
+curl -X POST http://localhost:8080/spec2/devices \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "server",
+    "ipAddress": "10.0.0.50",
+    "status": "active",
+    "health": "healthy"
+  }'
+```
+
+Get with the flat model:
+```bash
+curl -sS http://localhost:8080/spec2/devices | jq
+```
+
+Get with the old model:
+```bash
+curl -sS http://localhost:8080/devices | jq
+```
