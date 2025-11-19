@@ -496,6 +496,9 @@ func (g *Generator) GenerateAll() error {
 		if err := g.GenerateHandlers(); err != nil {
 			return err
 		}
+		if err := g.GenerateFlatHandlers(); err != nil {
+            return err
+        }
 		if err := g.GenerateMiddleware(); err != nil {
 			return err
 		}
@@ -699,6 +702,7 @@ func (g *Generator) LoadTemplates() error {
 		"models":   "server/models.go.tmpl",
 		"openapi":  "server/openapi.go.tmpl",
 		"flatModels": "server/flat_models.go.tmpl",
+		"flatHandlers": "server/flat_handlers.go.tmpl",
 
 		// Client templates
 		"client":       "client/client.go.tmpl",
@@ -774,6 +778,32 @@ func (g *Generator) GenerateHandlers() error {
 		fmt.Printf("  ✓ Generated %s\n", filename)
 	}
 
+	return nil
+}
+
+// GenerateFlatHandlers generates REST API handlers for the Flat API
+func (g *Generator) GenerateFlatHandlers() error {
+	fmt.Printf("🛠️  Generating flat handlers...\n")
+	for _, resource := range g.Resources {
+		var buf bytes.Buffer
+		data := g.templateData(resource, "server/flat_handlers.go.tmpl")
+
+		if err := g.Templates["flatHandlers"].Execute(&buf, data); err != nil {
+			return fmt.Errorf("failed to execute flat handlers template for %s: %w", resource.Name, err)
+		}
+
+		formatted, err := format.Source(buf.Bytes())
+		if err != nil {
+			return fmt.Errorf("failed to format generated code for %s: %w", resource.Name, err)
+		}
+
+		filename := filepath.Join(g.OutputDir, fmt.Sprintf("%s_flat_handlers_generated.go", strings.ToLower(resource.Name)))
+		if err := os.WriteFile(filename, formatted, 0644); err != nil {
+			return fmt.Errorf("failed to write flat handlers file for %s: %w", resource.Name, err)
+		}
+
+		fmt.Printf("  ✓ Generated %s\n", filename)
+	}
 	return nil
 }
 
