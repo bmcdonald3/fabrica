@@ -876,8 +876,9 @@ func (g *Generator) GenerateClient() error {
 // GenerateModels generates request/response models
 func (g *Generator) GenerateModels() error {
 	fmt.Printf("📊 Generating models...\n")
+	
+	// 1. Generate Standard Models
 	var buf bytes.Buffer
-
 	data := g.globalTemplateData("server/models.go.tmpl")
 
 	if err := g.Templates["models"].Execute(&buf, data); err != nil {
@@ -893,10 +894,29 @@ func (g *Generator) GenerateModels() error {
 	if err := os.WriteFile(filename, formatted, 0644); err != nil {
 		return fmt.Errorf("failed to write models file: %w", err)
 	}
-
 	fmt.Printf("  ✓ Generated %s\n", filename)
 
-    return nil
+	// 2. Generate Flat Models (NEW)
+	var flatBuf bytes.Buffer
+	// We re-use globalTemplateData because we are iterating over all resources in one file
+	flatData := g.globalTemplateData("server/flat_models.go.tmpl")
+
+	if err := g.Templates["flatModels"].Execute(&flatBuf, flatData); err != nil {
+		return fmt.Errorf("failed to execute flat models template: %w", err)
+	}
+
+	flatFormatted, err := format.Source(flatBuf.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to format generated flat models code: %w", err)
+	}
+
+	flatFilename := filepath.Join(g.OutputDir, "flat_models_generated.go")
+	if err := os.WriteFile(flatFilename, flatFormatted, 0644); err != nil {
+		return fmt.Errorf("failed to write flat models file: %w", err)
+	}
+	fmt.Printf("  ✓ Generated %s\n", flatFilename)
+
+	return nil
 }
 
 // GenerateRoutes generates route registration code
