@@ -14,7 +14,9 @@ package {{.PackageName}}
 import (
 	"time"
 	"{{.ModulePath}}/pkg/resource"
+	{{range .Resources}}
 	"{{.Package}}"
+	{{end}}
 )
 
 {{range .Resources}}
@@ -37,8 +39,11 @@ type {{.Name}}Flat struct {
 	{{.StatusType}} `json:",inline"`
 }
 
-// ToFlat converts a standard Envelope resource to a Flat model
-func (r *{{.Name}}Response) ToFlat() *{{.Name}}Flat {
+// {{.Name}}ToFlat converts a standard Envelope resource to a Flat model
+func {{.Name}}ToFlat(r *{{.PackageAlias}}.{{.Name}}) *{{.Name}}Flat {
+	if r == nil {
+		return nil
+	}
 	return &{{.Name}}Flat{
 		ID:          r.Metadata.UID,
 		Name:        r.Metadata.Name,
@@ -51,9 +56,9 @@ func (r *{{.Name}}Response) ToFlat() *{{.Name}}Flat {
 	}
 }
 
-// FromFlat converts a Flat model back to a standard Envelope resource.
+// {{.Name}}FromFlat converts a Flat model back to a standard Envelope resource.
 // NOTE: This strictly ignores Status fields to prevent users from spoofing observed state.
-func (f *{{.Name}}Flat) FromFlat() *{{.PackageAlias}}.{{.Name}} {
+func {{.Name}}FromFlat(f *{{.Name}}Flat) *{{.PackageAlias}}.{{.Name}} {
 	res := &{{.PackageAlias}}.{{.Name}}{
 		Resource: resource.Resource{
 			Kind: "{{.Name}}",
