@@ -698,6 +698,7 @@ func (g *Generator) LoadTemplates() error {
 		"routes":   "server/routes.go.tmpl",
 		"models":   "server/models.go.tmpl",
 		"openapi":  "server/openapi.go.tmpl",
+		"flatModels": "server/flat_models.go.tmpl",
 
 		// Client templates
 		"client":       "client/client.go.tmpl",
