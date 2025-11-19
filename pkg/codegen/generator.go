@@ -1,6 +1,8 @@
-// Copyright © 2025 OpenCHAMI a Series of LF Projects, LLC
-//
-// SPDX-License-Identifier: MIT
+/*
+Copyright © 2025 OpenCHAMI a Series of LF Projects, LLC
+
+SPDX-License-Identifier: MIT
+*/
 
 // Package codegen provides code generation for REST API resources.
 //
@@ -16,9 +18,9 @@
 //
 // Usage:
 //
-//	generator := NewGenerator(outputDir, packageName, modulePath)
-//	generator.RegisterResource(&myresource.MyResource{})
-//	generator.GenerateAll()
+//  generator := NewGenerator(outputDir, packageName, modulePath)
+//  generator.RegisterResource(&myresource.MyResource{})
+//  generator.GenerateAll()
 //
 // Generated artifacts:
 //   - REST API handlers (CRUD operations)
@@ -72,7 +74,7 @@ type SchemaVersion struct {
 	Transforms []string // List of transformations applied in this version
 }
 
-// SpecField represents a field in the resource spec
+// SpecField represents a field in the resource spec or status
 type SpecField struct {
 	Name         string // Field name (e.g., "Description")
 	JSONName     string // JSON tag name (e.g., "description")
@@ -94,6 +96,7 @@ type ResourceMetadata struct {
 	StorageName  string            // e.g., "User" for storage function names
 	Tags         map[string]string // Additional metadata
 	SpecFields   []SpecField       // Fields in the Spec struct
+	StatusFields []SpecField       // Fields in the Status struct
 
 	// Multi-version support
 	Versions        []SchemaVersion // Multiple schema versions
@@ -198,6 +201,7 @@ func (g *Generator) templateData(resource ResourceMetadata, templateName string)
 		"Tags":                  resource.Tags,
 		"PerResourceVersioning": perResVersioning,
 		"SpecFields":            resource.SpecFields,
+		"StatusFields":          resource.StatusFields,
 		"Versions":              resource.Versions,
 		"DefaultVersion":        resource.DefaultVersion,
 		"APIGroupVersion":       resource.APIGroupVersion,
@@ -271,8 +275,9 @@ func (g *Generator) RegisterResource(resourceType interface{}) error {
 		packageImport = pkgPath
 	}
 
-	// Extract spec fields using reflection
-	specFields := extractSpecFields(t)
+	// Extract fields using reflection
+	specFields := extractFields(t, "Spec")
+	statusFields := extractFields(t, "Status")
 
 	// Initialize default version metadata
 	defaultVersion := SchemaVersion{
@@ -299,6 +304,7 @@ func (g *Generator) RegisterResource(resourceType interface{}) error {
 		StorageName:     storageName,
 		Tags:            make(map[string]string),
 		SpecFields:      specFields,
+		StatusFields:    statusFields,
 		Versions:        []SchemaVersion{defaultVersion},
 		DefaultVersion:  "v1",
 		APIGroupVersion: "v1", // Default API group version
@@ -322,31 +328,31 @@ func (g *Generator) SetResourceTag(resourceName, key, value string) {
 	}
 }
 
-// extractSpecFields uses reflection to extract field information from a Spec struct
-func extractSpecFields(resourceType reflect.Type) []SpecField {
+// extractFields uses reflection to extract field information from a targeted struct field (Spec or Status)
+func extractFields(resourceType reflect.Type, targetField string) []SpecField {
 	var fields []SpecField
 
-	// Find the Spec field in the resource
+	// Find the targeted field (Spec or Status) in the resource
 	for i := 0; i < resourceType.NumField(); i++ {
 		field := resourceType.Field(i)
-		if field.Name == "Spec" {
-			specType := field.Type
-			if specType.Kind() == reflect.Ptr {
-				specType = specType.Elem()
+		if field.Name == targetField {
+			structType := field.Type
+			if structType.Kind() == reflect.Ptr {
+				structType = structType.Elem()
 			}
 
-			// Iterate through spec fields
-			for j := 0; j < specType.NumField(); j++ {
-				specField := specType.Field(j)
+			// Iterate through struct fields
+			for j := 0; j < structType.NumField(); j++ {
+				structField := structType.Field(j)
 
 				// Skip unexported fields
-				if !specField.IsExported() {
+				if !structField.IsExported() {
 					continue
 				}
 
 				// Extract JSON tag
-				jsonTag := specField.Tag.Get("json")
-				jsonName := specField.Name
+				jsonTag := structField.Tag.Get("json")
+				jsonName := structField.Name
 				if jsonTag != "" {
 					// Parse json tag (format: "name,omitempty" or just "name")
 					parts := strings.Split(jsonTag, ",")
@@ -356,16 +362,16 @@ func extractSpecFields(resourceType reflect.Type) []SpecField {
 				}
 
 				// Check if required from validate tag
-				validateTag := specField.Tag.Get("validate")
+				validateTag := structField.Tag.Get("validate")
 				required := strings.Contains(validateTag, "required")
 
 				// Generate example value based on type
-				exampleValue := generateExampleValue(specField.Type, specField.Name)
+				exampleValue := generateExampleValue(structField.Type, structField.Name)
 
 				fields = append(fields, SpecField{
-					Name:         specField.Name,
+					Name:         structField.Name,
 					JSONName:     jsonName,
-					Type:         specField.Type.String(),
+					Type:         structField.Type.String(),
 					Required:     required,
 					ExampleValue: exampleValue,
 				})
@@ -412,7 +418,7 @@ func generateExampleValue(t reflect.Type, fieldName string) string {
 		elemType := t.Elem()
 		if elemType.Kind() == reflect.String {
 			return `["item1","item2"]`
-		}
+        }
 		return "[]"
 	case reflect.Map:
 		return `{"key":"value"}`
@@ -785,7 +791,7 @@ func (g *Generator) GenerateMiddleware() error {
 		data := g.middlewareData("middleware/validation.go.tmpl")
 		if err := g.generateMiddlewareFile("middlewareValidation", "validation_middleware_generated.go", middlewareDir, data); err != nil {
 			return err
-		}
+        }
 	}
 
 	// Generate conditional middleware if enabled
@@ -890,7 +896,7 @@ func (g *Generator) GenerateModels() error {
 
 	fmt.Printf("  ✓ Generated %s\n", filename)
 
-	return nil
+    return nil
 }
 
 // GenerateRoutes generates route registration code
@@ -1038,7 +1044,7 @@ func (g *Generator) GenerateEntAdapter() error {
 	// Generate generate.go for Ent code generation
 	if err := g.executeTemplate("generate", filepath.Join("internal", "storage", "generate.go"), nil); err != nil {
 		return fmt.Errorf("failed to generate generate.go: %w", err)
-	}
+    }
 
 	return nil
 }
@@ -1137,7 +1143,7 @@ var templateFuncs = template.FuncMap{
 	"camelCase": func(s string) string {
 		if len(s) == 0 {
 			return s
-		}
+        }
 		return strings.ToLower(s[:1]) + s[1:]
 	},
 	"specToJSON": func(fields []SpecField) string {
