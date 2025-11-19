@@ -32,11 +32,11 @@ type {{.Name}}Flat struct {
 	UpdatedAt   time.Time         `json:"updatedAt,omitempty"`
 
 	// Embed Spec (Inline) - these fields appear at the top level
-	{{.SpecType}} `json:",inline"`
+	{{.SpecType}}
 
 	// Embed Status (Inline) - these fields appear at the top level
 	// Note: conflicting field names between Spec and Status will result in undefined JSON behavior
-	{{.StatusType}} `json:",inline"`
+	{{.StatusType}}
 }
 
 // {{.Name}}ToFlat converts a standard Envelope resource to a Flat model
